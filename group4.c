@@ -150,6 +150,10 @@ static void recv_bc(struct broadcast_conn *c, rimeaddr_t *from)
         }
         else
         {
+            if (sequence_number_heard > previous_sequence_number)
+            {
+                is_better_packet = 1;
+            }
 #if PARENT_STRATEGY == HOPCOUNT
             if (received_discovery_message.hop_count < smallest_hopcount)
             {
