@@ -1,0 +1,53 @@
+\documentclass[a4paper]{llncs}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[australian,american]{babel}
+\usepackage[backend=biber,style=lncs,bibencoding=utf8,sorting=none]{biblatex}
+\usepackage{csquotes}
+\usepackage[hidelinks]{hyperref}
+
+
+\bibliography{references}
+
+\nocite{*}
+
+\begin{document}
+\title{Tree-Based Routing}
+
+%If you're using runningheads you can add an abreviated title for the running head on odd pages using the following
+%\titlerunning{abreviated title goes here}
+%and an alternative title for the table of contents:
+%\toctitle{table of contents title}
+
+\subtitle{Sensor Networks and Internet of Things}
+
+%For multiple authors:
+\author{Sébastien Vaucher \and Benjamin Bediako}
+
+
+%If using runnningheads you can abbreviate the author name on even pages:
+%\authorrunning{abbreviated author name}
+%and you can change the author name in the table of contents
+%\tocauthor{enhanced author name}
+
+% If authors are from different institutes 
+\institute{Université de Neuchâtel\\Neuchâtel, Switzerland\\ \email{\{\href{mailto:sebastien.vaucher@unine.ch}{sebastien.vaucher},\href{mailto:benjamin.bediako@unine.ch}{benjamin.bediako}\}@unine.ch}}
+
+%to remove your email just remove '\email{email address}'
+% you can also remove the thanks footnote by removing '\thanks{Thank you to...}'
+
+
+\maketitle
+
+%\begin{abstract}
+%abstract text goes here - Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+%\end{abstract}
+
+\section{Protocol Introduction}
+
+
+\printbibliography
+
+\end{document}
+
