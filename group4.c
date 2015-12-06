@@ -1,6 +1,7 @@
 #include "contiki.h"
 #include <stdio.h> /* For printf() */
 #include <string.h>
+#include <limits.h>
 #include "net/rime.h"
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
@@ -33,8 +34,10 @@ struct temperature_packet
 #define UNICAST_CHANNEL 140
 #define BROADCAST_CHANNEL 128
 #define WAIT_BEFORE_BEGINNING_ALGORITHM 5
-#define BROADCAST_INTERVAL 10
-#define TEMPERATURE_INTERVAL 20
+#define BROADCAST_INTERVAL 47
+#define PRINT_STATS_INTERVAL 30
+#define TEMPERATURE_INTERVAL 60
+#define MAX_STATS_HOPS 20
 
 //#define PARENT_STRATEGY HOPCOUNT
 #define PARENT_STRATEGY RSSI
@@ -44,13 +47,14 @@ struct temperature_packet
  ************************************************/
 static uint16_t sequence_number_heard;
 static uint16_t sequence_number_emitted;
-static struct etimer et0, et1;
+static struct etimer et0, et1, et2;
 static struct ctimer leds_off_timer_send;
 static struct unicast_conn uc;
 static struct broadcast_conn bc;
 static unsigned short parent_node_id;
 static int best_rssi;
 static uint16_t smallest_hopcount;
+static short stats[MAX_STATS_HOPS];
 
 /************************************************
  *                  Functions                   *
@@ -78,7 +82,7 @@ void set_new_parent(uint16_t _parent_node_id)
 {
     if (parent_node_id != _parent_node_id) {
         parent_node_id = _parent_node_id;
-        printf("New parent node: %d\n", _parent_node_id);
+        //printf("New parent node: %d\n", _parent_node_id);
     }
 }
 
@@ -111,13 +115,19 @@ static void recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
 
     if (ROOT_ID == node_id)
     {
-        print_temperature_packet(&received_temperature_message);
+        //print_temperature_packet(&received_temperature_message);
+        uint16_t hop_count = received_temperature_message.hop_count;
+        if (hop_count > MAX_STATS_HOPS)
+        {
+            hop_count = MAX_STATS_HOPS;
+        }
+        stats[hop_count] ++;
     }
     else
     {
         received_temperature_message.hop_count++;
         send_temperature_message(&received_temperature_message);
-        printf("Node %u: relayed temperature of node %u\n", node_id, received_temperature_message.origin_node_id);
+        //printf("Node %u: relayed temperature of node %u\n", node_id, received_temperature_message.origin_node_id);
     }
 }
 
@@ -130,10 +140,10 @@ static void recv_bc(struct broadcast_conn *c, rimeaddr_t *from)
         packetbuf_copyto(&received_discovery_message);
         int rssi = (int) packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-        printf("Not root: received discovery bcast from %d, ", from->u8[0]);
-        printf("seq=%u, ", received_discovery_message.sequence_number);
-        printf("hops=%u, ", received_discovery_message.hop_count);
-        printf("RSSI=%i\n", rssi);
+        //printf("Not root: received discovery bcast from %d, ", from->u8[0]);
+        //printf("seq=%u, ", received_discovery_message.sequence_number);
+        //printf("hops=%u, ", received_discovery_message.hop_count);
+        //printf("RSSI=%i\n", rssi);
 
 
         uint16_t previous_sequence_number = sequence_number_heard;
@@ -153,6 +163,7 @@ static void recv_bc(struct broadcast_conn *c, rimeaddr_t *from)
             if (sequence_number_heard > previous_sequence_number)
             {
                 is_better_packet = 1;
+                best_rssi = INT_MIN;
             }
 #if PARENT_STRATEGY == HOPCOUNT
             if (received_discovery_message.hop_count < smallest_hopcount)
@@ -183,8 +194,8 @@ static void recv_bc(struct broadcast_conn *c, rimeaddr_t *from)
             packetbuf_copyfrom(&sent_discovery_message, sizeof(sent_discovery_message));
             broadcast_send(&bc);
 
-            printf("Not root: sent discovery bcast message. seq=%u, ", sequence_number_emitted);
-            printf("hops=%u\n", smallest_hopcount + 1);
+            //printf("Not root: sent discovery bcast message. seq=%u, ", sequence_number_emitted);
+            //printf("hops=%u\n", smallest_hopcount + 1);
         }
     }
 }
@@ -201,11 +212,15 @@ PROCESS_THREAD(send_temperature_process, ev, data)
     unicast_open(&uc, UNICAST_CHANNEL, &unicast_callbacks);
     SENSORS_ACTIVATE(sht11_sensor);
 
+    // Desynchronize each node
+    etimer_set(&et0, (node_id % TEMPERATURE_INTERVAL) * CLOCK_SECOND);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et0));
+
     while (1)
     {
         etimer_set(&et0, TEMPERATURE_INTERVAL * CLOCK_SECOND);
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et0));
-
+    
         if (node_id != ROOT_ID && sequence_number_heard > 0)
         {
             static struct temperature_packet sent_temperature_message;
@@ -214,7 +229,11 @@ PROCESS_THREAD(send_temperature_process, ev, data)
             sent_temperature_message.temperature = sht11_sensor.value(SHT11_SENSOR_TEMP);
 
             send_temperature_message(&sent_temperature_message);
-            printf("Temperature sent\n");
+            //printf("Temperature sent\n");
+        }
+        else if (node_id == ROOT_ID)
+        {
+            stats[0] ++;
         }
     }
     PROCESS_END();
@@ -249,7 +268,7 @@ PROCESS_THREAD(routing_process, ev, data)
             packetbuf_copyfrom(&sent_discovery_message, sizeof(sent_discovery_message));
             broadcast_send(&bc);
 
-            printf("Root: sent discovery bcast message. seq=%u\n", sequence_number_emitted);
+            //printf("Root: sent discovery bcast message. seq=%u\n", sequence_number_emitted);
 
             // blink
             leds_on(LEDS_BLUE);
@@ -264,4 +283,38 @@ PROCESS_THREAD(routing_process, ev, data)
     PROCESS_END();
 }
 
-AUTOSTART_PROCESSES(&routing_process, &send_temperature_process);
+PROCESS(print_stats_process, "Print stats");
+PROCESS_THREAD(print_stats_process, ev, data)
+{
+    PROCESS_BEGIN();
+
+    if (ROOT_ID == node_id)
+    {
+        static int i;
+        for (i = 0; i < MAX_STATS_HOPS; i++)
+        {
+            stats[i] = 0;
+        }
+        while (1)
+        {
+            etimer_set(&et2, PRINT_STATS_INTERVAL * CLOCK_SECOND);
+            PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et2));
+            
+            static char output[MAX_STATS_HOPS * 4 + 20];
+            strcpy(output, "");
+            
+            for (i = 0; i < MAX_STATS_HOPS; i++)
+            {
+                static char temp[10];
+                sprintf(temp, "%u ", stats[i]);
+                strcat(output, temp);
+            }
+            printf("stats %s\n", output);
+        }
+
+    }
+    PROCESS_END();
+}
+
+AUTOSTART_PROCESSES(&routing_process, &send_temperature_process, &print_stats_process);
+
