@@ -5,6 +5,7 @@
 \usepackage[australian,american]{babel}
 \usepackage[backend=biber,style=lncs,bibencoding=utf8,sorting=none]{biblatex}
 \usepackage{csquotes}
+\usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
 
 
@@ -46,6 +47,19 @@
 
 \section{Protocol Introduction}
 
+\begin{figure}
+	\centering
+	\input{xmac_hopcount.wiseml.tex}
+	\caption{Parent relations with X-MAC and the hop-count strategy}
+	\label{fig:map-hopcount}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\input{xmac_rssi.wiseml.tex}
+	\caption{Parent relations with X-MAC and the RSSI strategy}
+	\label{fig:map-rssi}
+\end{figure}
 
 \printbibliography
 
