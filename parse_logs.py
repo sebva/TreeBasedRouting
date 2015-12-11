@@ -9,8 +9,11 @@ Author: Sébastien Vaucher
 import os
 import xml
 from xml.sax.handler import ContentHandler
-
 import re
+
+import functools
+
+import math
 
 all_nodes = {}
 hop_count_distribution = []
@@ -104,7 +107,9 @@ def print_tree(node, level=0):
 
 def tikz_relations(node, file_handle, color, phase):
     for child in node.children:
-        file_handle.write("\draw [%s, thick, dash pattern= on 4mm off 4mm, dash phase=%dmm, <-, >=latex] (%d,%d,%d) to (%d,%d,%d);\n" % (color, phase, node.x, node.y, node.z, child.x, child.y, child.z))
+        file_handle.write(
+            "\draw [%s, thick, dash pattern= on 4mm off 4mm, dash phase=%dmm, <-, >=latex] (%d,%d,%d) to (%d,%d,%d);\n" % (
+                color, phase, node.x, node.y, node.z, child.x, child.y, child.z))
         tikz_relations(child, file_handle, color, phase)
 
 
@@ -116,36 +121,64 @@ def export_tikz(file_handle):
     \node[anchor=south west,inner sep=0] at (0,0) {\includegraphics[width=\textwidth]{3D_image_iam_complete.png}};
     """)
     phase = 2
-    for color, file in zip(('Maroon', 'JungleGreen'), ['logs/' + x for x in os.listdir('logs') if re.match('xmac_.+\.wiseml$', x)]):
+    for color, file in zip(('Maroon', 'JungleGreen'),
+                           ['logs/' + x for x in os.listdir('logs') if re.match('xmac_.+\.wiseml$', x)]):
         print(file)
         all_nodes = {}
         xml.sax.parse(open(file), InstantiateNodesHandler())
         xml.sax.parse(open(file), BuildTreeHandler())
         tikz_relations(all_nodes[1], file_handle, color, phase)
         phase += 4
-        
+
     for node in all_nodes.values():
-        file_handle.write(r'\node [blue, very thick] (%d) at (%d,%d,%d) {$\bullet$};' % (node.nid, node.x, node.y, node.z))
+        file_handle.write(
+            r'\node [blue, very thick] (%d) at (%d,%d,%d) {$\bullet$};' % (node.nid, node.x, node.y, node.z))
     file_handle.write(r'\end{tikzpicture}')
 
 
-def output_distribution_stats(dist, file):
+def compute_total_distance(node):
+    def distance(n1, n2):
+        return math.sqrt((n1.x - n2.x) ** 2 + (n1.y - n2.y) ** 2 + (n1.z - n2.z) ** 2)
+
+    nb_links = 0
+    total_distance = 0
+
+    for child in node.children:
+        nb_links += 1
+        total_distance += distance(node, child)
+
+        child_data = compute_total_distance(child)
+        nb_links += child_data[1]
+        total_distance += child_data[0]
+
+    return total_distance, nb_links
+
+
+def output_distribution_stats(file):
     print("Stats for %s:" % file)
     # Average hop-count
-    average_hc = sum([x[0] * x[1] for x in zip(dist, range(1, len(dist)))]) / sum(dist)
+    average_hc = sum([x[0] * x[1] for x in zip(hop_count_distribution, range(1, len(hop_count_distribution)))]) / sum(
+        hop_count_distribution)
     print("\tAverage hop-count = %f" % average_hc)
 
     # Global delivery rate
-    gdr = sum(dist[1:]) / (len(all_nodes) - 1) / dist[0] * 100.0
+    gdr = sum(hop_count_distribution[1:]) / (len(all_nodes) - 1) / hop_count_distribution[0] * 100.0
     print("\tGlobal delivery rate = %f %%" % gdr)
 
     if 'xmac' in str(file):
         # Connected delivery rate
         non_connected_nodes = len([node for node in all_nodes.values() if node.parent is None])
-        cdr = sum(dist[1:]) / (len(all_nodes) - non_connected_nodes) / dist[0] * 100.0
+        cdr = sum(hop_count_distribution[1:]) / (len(all_nodes) - non_connected_nodes) / hop_count_distribution[
+            0] * 100.0
         print("\tConnected delivery rate = %f %%" % cdr)
         cn_percent = (len(all_nodes) - non_connected_nodes) / len(all_nodes) * 100.0
         print("\tConnected nodes = %f %%" % cn_percent)
+
+        # Average distance
+        (distance, nb_links) = compute_total_distance(all_nodes[1])
+        average_distance = distance / nb_links
+        print("\tAverage physical distance = %f" % average_distance)
+
 
 if __name__ == '__main__':
     with open('report/map.tex', 'w') as tikz:
@@ -157,4 +190,4 @@ if __name__ == '__main__':
         xml.sax.parse(open(file), InstantiateNodesHandler())
         xml.sax.parse(open(file), BuildTreeHandler())
         xml.sax.parse(open(file), DistributionHandler())
-        output_distribution_stats(hop_count_distribution, file)
+        output_distribution_stats(file)
