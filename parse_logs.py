@@ -110,13 +110,13 @@ def tikz_relations(node, file_handle, color, phase):
 
 def export_tikz(file_handle):
     global all_nodes
-    print("Writing %s" % str(file_handle))
+    print("Writing %s" % file_handle.name)
     file_handle.write(r"""
     \begin{tikzpicture}[scale=0.097,y= {(0.281cm,0.281cm)}, z={(0cm,1cm)}, x={(1cm,0cm)}]]
     \node[anchor=south west,inner sep=0] at (0,0) {\includegraphics[width=\textwidth]{3D_image_iam_complete.png}};
     """)
     phase = 2
-    for color, file in zip(('Maroon', 'JungleGreen'), filter(lambda x: re.match('logs/xmac_[a-z]+\.wiseml$', x), os.listdir('.'))):
+    for color, file in zip(('Maroon', 'JungleGreen'), ['logs/' + x for x in os.listdir('logs') if re.match('xmac_.+\.wiseml$', x)]):
         print(file)
         all_nodes = {}
         xml.sax.parse(open(file), InstantiateNodesHandler())
@@ -139,7 +139,7 @@ def output_distribution_stats(dist, file):
     gdr = sum(dist[1:]) / (len(all_nodes) - 1) / dist[0] * 100.0
     print("\tGlobal delivery rate = %f %%" % gdr)
 
-    if re.match('xmac', str(file)):
+    if 'xmac' in str(file):
         # Connected delivery rate
         non_connected_nodes = len([node for node in all_nodes.values() if node.parent is None])
         cdr = sum(dist[1:]) / (len(all_nodes) - non_connected_nodes) / dist[0] * 100.0
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     with open('report/map.tex', 'w') as tikz:
         export_tikz(tikz)
 
-    for file in filter(lambda x: re.match('logs/.+\.wiseml$', x), os.listdir('.')):
+    for file in ['logs/' + x for x in os.listdir('logs') if re.match('.+\.wiseml$', x)]:
         all_nodes = {}
         hop_count_distribution = []
         xml.sax.parse(open(file), InstantiateNodesHandler())
