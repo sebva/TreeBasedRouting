@@ -4,14 +4,24 @@
 \usepackage{lmodern}
 \usepackage[australian,american]{babel}
 \usepackage[backend=biber,style=lncs,bibencoding=utf8,sorting=none]{biblatex}
+\usepackage{amsfonts}
 \usepackage{csquotes}
+\usepackage[usenames, dvipsnames]{xcolor}
 \usepackage{tikz}
+\usepackage{multirow}
+\usepackage{pgfplots}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{algorithm2e}
+\usepackage[super]{nth}
 \usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.5}
 
 
 \bibliography{references}
-
-\nocite{*}
+\pagestyle{plain}
+%\nocite{*}
 
 \begin{document}
 \title{Tree-Based Routing}
@@ -40,25 +50,121 @@
 
 
 \maketitle
-
+\thispagestyle{plain}
 %\begin{abstract}
 %abstract text goes here - Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 %\end{abstract}
 
-\section{Protocol Introduction}
+\section{Introduction}
+
+This report presents the results obtained during the project of the Sensor Networks and Internet of Things lecture taught at the University of Bern.
+The goal of the project is to implement a tree-based routing protocol on top of the Contiki platform.
+The implementation is programmed in the C programming language.
+
+This document is structured as follows.
+The first section contains a theoretical introduction of the protocol.
+In the second part, the implementation is discussed.
+Finally, we evaluate different variants of the protocol and discuss the results.
+
+\section{Protocol Description}
+
+This section describes the routing protocol which we were tasked to implement.
+
+In a wireless sensor network, a number of nodes collaborate to provide sensor data to a more powerful computer for further analysis.
+Our deployment considers a single aggregator, commonly called the \textit{sink}.
+A number of low-power sensor nodes will sense data at their location and then send values towards the sink.
+As it is not realistically feasible to reach the sink from any location, more distant nodes will forward their data to an intermediate node that is then tasked to send the data towards the sink.
+
+The tree-based routing protocol is elegantly simple.
+It only requires broadcast and unicast primitives in the sensor node firmware.
+Packet routing, however, is only possible in one direction, viz. from individual nodes to the central sink node.
+
+The tree-based routing protocol works in two phases.
+First, the discovery phase will shape paths from each leaf node to the root node.
+After this phase is completed, each node knows a route towards the sink that it can use to transfer useful sensor data.
+
+\subsection{Discovery Phase}
+
+\input{algorithms.tex}
+
+The discovery phase of the algorithm works by \textit{flooding}.
+Discovery messages will be exchanged from the sink to distant nodes.
+A discovery message contains the following fields:
+
+\begin{itemize}
+\item The parent node ID
+\item A hop counter
+\item A sequence number
+\end{itemize}
+
+The parent node ID is the identifier of the node sending a particular packet.
+The hop-count value states how many nodes a packet has traversed.
+When a packet originates from any node, the hop-count is always 0.
+The value is incremented whenever a node forwards a packet.
+The sequence number identifies an instance of a packet.
+Nodes that forward a packet must never change this value.
+The sequence number is incremented by 1 for each new discovery message created by the root node.
+Using this information, sensor nodes can identify whether an incoming packet is new.
+
+The root node constitutes what we will call \enquote{level 0} of the tree.
+Its operations are described in \autoref{algo:root}.
+In short, the root will broadcast a new discovery packet at regular intervals.
+
+When a sensor node that is not the root receives a discovery packet, it proceeds as shown is \autoref{algo:nonroot}.
+Basically, a node will compare the information in the discovery packet with the characteristics of its current parent.
+If the parent advertised in the packet would be better (smaller hop-count, better signal strength, etc.), the node assigns it as its parent.
+Then, if the packet would be of interest to other nodes -- if it is a new packet coming from the root, or if the hop-count is smaller than a previously forwarded packet -- then, the node will broadcast it.
+The process is periodical, so broken links in the system will automatically heal when the next discovery iteration happens.
+
+\subsection{Sending Sensor Data}
+
+The role of the discovery phase was to establish a routing tree.
+Sending data to the sink is then trivially simple for the sensor nodes.
+Once a sensor node knows a parent, it will routinely send sensor data to it.
+The parent node will then forward the packet to its own parent until the sink is reached.
+
+\section{Analysis}
+
+In our implementation, we have two configuration options: the MAC protocol and the metric used to qualify if a parent node is \enquote{better} than another.
+We compared two MAC protocols: NullMAC and X-MAC \autocite{xmac}; and two metrics: hop-count and RSSI.
+The hop-count metric favorises nodes that are topologically closer to the sink.
+The RSSI metric favorises the quality of the reception from the parent node.
+
+We ran our algorithm of the TARWIS testbed of the University of Bern, by batches of \SI{30}{\minute}.
+
+
+
+\begin{table}
+\centering
+\begin{tabular}{lllll}
+\toprule
+& & \multicolumn{2}{c}{Packet delivery rate} \\
+\cmidrule{4-5}
+MAC & Strategy & Average hop-count & Global & Connected only \\
+\midrule
+\multirow{2}{*}{NullMAC} & Hop-count & \\
+& RSSI & \\
+\multirow{2}{*}{X-MAC} & Hop-count & \\
+& RSSI & \\
+\bottomrule
+\end{tabular}
+\caption{Comparative table of different configurations}
+\label{tab:comp}
+\end{table}
 
 \begin{figure}
 	\centering
-	\input{xmac_hopcount.wiseml.tex}
-	\caption{Parent relations with X-MAC and the hop-count strategy}
-	\label{fig:map-hopcount}
+	\input{distribution.tex}
+	\caption{Distribution of hop-counts with different strategies}
+	\label{fig:distribution}
 \end{figure}
 
 \begin{figure}
 	\centering
-	\input{xmac_rssi.wiseml.tex}
-	\caption{Parent relations with X-MAC and the RSSI strategy}
-	\label{fig:map-rssi}
+	% Generate this file by running the logs/parse_logs.py script
+	\input{map.tex}
+	\caption{Parent relations with X-MAC, using the \colorbox{Maroon}{\color{white}hop-count} or \colorbox{JungleGreen}{RSSI} strategies}
+	\label{fig:map-hopcount}
 \end{figure}
 
 \printbibliography

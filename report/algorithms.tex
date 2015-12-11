@@ -1,0 +1,61 @@
+\begin{algorithm}[htbp]
+\SetKwFunction{Sleep}{Sleep}
+\SetKwFunction{Broadcast}{Broadcast}
+\SetKwData{WaitTime}{WaitTime}
+\SetKwData{SequenceEmitted}{SequenceEmitted}
+\SetKwData{DiscoveryMessage}{DiscoveryMessage}
+\SetKwData{NodeId}{NodeId}
+\KwIn{\\\WaitTime: Time to wait between each discovery phase \\
+\NodeId: ID of the root node}
+\Begin{
+$\SequenceEmitted \leftarrow 0$ \;
+\While{$\mathcal{T}$}{
+\Sleep{\WaitTime} \;
+$\SequenceEmitted \leftarrow \SequenceEmitted + 1$ \;
+$\DiscoveryMessage.ParentId \leftarrow \NodeId$ \;
+$\DiscoveryMessage.HopCount \leftarrow 1$ \;
+$\DiscoveryMessage.SequenceNumber \leftarrow \SequenceEmitted$ \;
+\Broadcast{\DiscoveryMessage} \;
+}}
+\caption{Sink node discovery algorithm}
+\label{algo:root}
+\end{algorithm}
+
+
+
+\begin{algorithm}[htbp]
+\SetKwFunction{Sleep}{Sleep}
+\SetKwFunction{Broadcast}{Broadcast}
+\SetKwData{WaitTime}{WaitTime}
+\SetKwData{PreviousSequence}{PreviousSequence}
+\SetKwData{DiscoveryMessage}{DiscoveryMessage}
+\SetKwData{NewParent}{NewParent}
+\SetKwData{ShouldForward}{ShouldForward}
+\SetKwData{NodeId}{NodeId}
+\KwIn{\\\NodeId: ID of the current node \\
+\DiscoveryMessage: An incoming discovery packet \\
+\PreviousSequence: Most recent sequence number heard}
+\KwOut{\\\NewParent: New parent node}
+\Begin{
+$\ShouldForward \leftarrow \mathcal{F}$ \;
+\uIf{\DiscoveryMessage is the \nth{1} message to ever arrive}{
+	$\NewParent \leftarrow \DiscoveryMessage.ParentId$ \;
+	$\ShouldForward \leftarrow \mathcal{T}$ \;
+}
+\Else{
+	\If{$\DiscoveryMessage.SequenceNumber > \PreviousSequence$}{
+		$\ShouldForward \leftarrow \mathcal{T}$ \;
+	}
+	\If{$\DiscoveryMessage.ParentId$ would be a better parent}{
+		$\NewParent \leftarrow \DiscoveryMessage.ParentId$ \;
+		$\ShouldForward \leftarrow \mathcal{T}$ \;
+	}
+}
+\If{$\ShouldForward = \mathcal{T}$}{
+	$\DiscoveryMessage.HopCount \leftarrow \DiscoveryMessage.HopCount + 1$ \;
+	$\DiscoveryMessage.ParentId \leftarrow \NodeId$ \;
+	\Broadcast{\DiscoveryMessage} \;
+}}
+\caption{Sensor node discovery algorithm}
+\label{algo:nonroot}
+\end{algorithm}
