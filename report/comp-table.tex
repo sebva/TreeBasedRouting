@@ -1,0 +1,39 @@
+%Stats for logs/nullmac_rssi.wiseml:
+%        Average hop-count = 2.734977
+%        Global delivery rate = 85.020243 %
+%Stats for logs/nullmac_hopcount.wiseml:
+%        Average hop-count = 2.772932
+%        Global delivery rate = 87.179487 %
+%Stats for logs/xmac_hopcount.wiseml:
+%        Average hop-count = 2.715686
+%        Global delivery rate = 66.261808 %
+%        Connected delivery rate = 89.110708 %
+%        Connected nodes = 72.500000 %
+%        Average physical distance = 49.516652
+%Stats for logs/xmac_rssi.wiseml:
+%        Average hop-count = 2.612903
+%        Global delivery rate = 68.556005 %
+%        Connected delivery rate = 99.025341 %
+%        Connected nodes = 67.500000 %
+%        Average physical distance = 46.064452
+\begin{tabular}{llSSSSS}
+\toprule
+& & & & & \multicolumn{2}{c}{Packet delivery rate ($\%$)} \\
+\cmidrule{6-7}
+MAC & Strategy & \multirow{-2}{1.6cm}{\centering Average hop-count} & \multirow{-2}{1.6cm}{\centering Avg. link distance} & \multirow{-2}{1.7cm}{\centering Connected nodes ($\%$)} & {Global} & {Connected only} \\
+\midrule
+
+\multirow{2}{*}{NullMAC} & Hop-count &
+2.73 & {\itshape n/a} & {\itshape n/a} & 85.0 & {\itshape n/a} \\
+
+& RSSI &
+2.77 & {\itshape n/a} & {\itshape n/a} & 87.2 & {\itshape n/a} \\
+ 
+\multirow{2}{*}{X-MAC} & Hop-count & 
+2.72 & 49.5 & 72.5 & 66.3 & 89.1 \\
+
+& RSSI & 
+2.61 & 46.1 & 67.5 & 68.6 & 99.0 \\
+
+\bottomrule
+\end{tabular}

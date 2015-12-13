@@ -58,13 +58,12 @@
 \section{Introduction}
 
 This report presents the results obtained during the project of the Sensor Networks and Internet of Things lecture taught at the University of Bern.
-The goal of the project is to implement a tree-based routing protocol on top of the Contiki platform.
+The goal of the project is to implement a tree-based routing protocol on top of the Contiki platform \autocite{contiki}.
 The implementation is programmed in the C programming language.
 
 This document is structured as follows.
 The first section contains a theoretical introduction of the protocol.
-In the second part, the implementation is discussed.
-Finally, we evaluate different variants of the protocol and discuss the results.
+In the second part, we evaluate different implementation variants of the protocol and discuss the results.
 
 \section{Protocol Description}
 
@@ -73,19 +72,19 @@ This section describes the routing protocol which we were tasked to implement.
 In a wireless sensor network, a number of nodes collaborate to provide sensor data to a more powerful computer for further analysis.
 Our deployment considers a single aggregator, commonly called the \textit{sink}.
 A number of low-power sensor nodes will sense data at their location and then send values towards the sink.
-As it is not realistically feasible to reach the sink from any location, more distant nodes will forward their data to an intermediate node that is then tasked to send the data towards the sink.
+As it is not realistically feasible to reach the sink from any location, more distant nodes will forward their data to intermediate nodes that are then tasked to send the data towards the sink.
 
 The tree-based routing protocol is elegantly simple.
 It only requires broadcast and unicast primitives in the sensor node firmware.
-Packet routing, however, is only possible in one direction, viz. from individual nodes to the central sink node.
+Packet routing, however, is only possible in one direction, that is from individual nodes to the central sink node.
 
 The tree-based routing protocol works in two phases.
-First, the discovery phase will shape paths from each leaf node to the root node.
+First, the discovery phase will discover paths from each leaf node to the root node.
 After this phase is completed, each node knows a route towards the sink that it can use to transfer useful sensor data.
 
-\subsection{Discovery Phase}
-
 \input{algorithms.tex}
+
+\subsection{Discovery Phase}
 
 The discovery phase of the algorithm works by \textit{flooding}.
 Discovery messages will be exchanged from the sink to distant nodes.
@@ -107,10 +106,10 @@ The sequence number is incremented by 1 for each new discovery message created b
 Using this information, sensor nodes can identify whether an incoming packet is new.
 
 The root node constitutes what we will call \enquote{level 0} of the tree.
-Its operations are described in \autoref{algo:root}.
-In short, the root will broadcast a new discovery packet at regular intervals.
+Its role is to broadcast a new discovery packet at regular intervals.
+It will also receive all sensor data from all the nodes in the system.
 
-When a sensor node that is not the root receives a discovery packet, it proceeds as shown is \autoref{algo:nonroot}.
+When a sensor node at $\text{level} > 0$ receives a discovery packet, it proceeds as shown in \autoref{algo:nonroot}.
 Basically, a node will compare the information in the discovery packet with the characteristics of its current parent.
 If the parent advertised in the packet would be better (smaller hop-count, better signal strength, etc.), the node assigns it as its parent.
 Then, if the packet would be of interest to other nodes -- if it is a new packet coming from the root, or if the hop-count is smaller than a previously forwarded packet -- then, the node will broadcast it.
@@ -123,49 +122,106 @@ Sending data to the sink is then trivially simple for the sensor nodes.
 Once a sensor node knows a parent, it will routinely send sensor data to it.
 The parent node will then forward the packet to its own parent until the sink is reached.
 
-\section{Analysis}
+Sensor data packets contain the following fields:
+
+\begin{itemize}
+\item The ID of the origin sensor node
+\item A hop counter
+\item Sensor data
+\end{itemize}
+
+The hop counter starts at 1.
+The value is incremented each time the packet gets forwarded by an intermediate node.
+
+\section{Implementation and methodology}
+
+This section discusses our implementation of the protocol and how we proceeded to collect statistics about each run.
 
 In our implementation, we have two configuration options: the MAC protocol and the metric used to qualify if a parent node is \enquote{better} than another.
-We compared two MAC protocols: NullMAC and X-MAC \autocite{xmac}; and two metrics: hop-count and RSSI.
+We compared two MAC protocols: NullMAC and X-MAC \autocite{xmac}; in addition to two metrics: hop-count and RSSI \autocite{rssi}.
 The hop-count metric favorises nodes that are topologically closer to the sink.
-The RSSI metric favorises the quality of the reception from the parent node.
+The Received Signal Strength Indication metric favorises the quality of the reception from the parent node.
 
-We ran our algorithm of the TARWIS testbed of the University of Bern, by batches of \SI{30}{\minute}.
+We ran our algorithm on the TARWIS/WISEBED testbed of the University of Bern, by batches of \SI{30}{\minute}.
+The sink periodically prints the distribution of the hop-counts of the packets it received.
+Each sensor node prints the identifier of its parent everytime it assigns a new parent.
+Using these data, and combined with the metadata contained in the XML output from TARWIS, we were able to compute various statistics related to each execution.
 
+The analysis of the logs is totally automated thanks to a custom-written Python script.
+It computes the values shown in \autoref{tab:comp}, and generates the Ti\textit{k}Z code that draws \autoref{fig:map}.
 
-
-\begin{table}
-\centering
-\begin{tabular}{lllll}
-\toprule
-& & \multicolumn{2}{c}{Packet delivery rate} \\
-\cmidrule{4-5}
-MAC & Strategy & Average hop-count & Global & Connected only \\
-\midrule
-\multirow{2}{*}{NullMAC} & Hop-count & \\
-& RSSI & \\
-\multirow{2}{*}{X-MAC} & Hop-count & \\
-& RSSI & \\
-\bottomrule
-\end{tabular}
+\begin{table}[tb]
 \caption{Comparative table of different configurations}
+\centering
+\input{comp-table.tex}
 \label{tab:comp}
 \end{table}
 
-\begin{figure}
+\section{Analysis}
+
+In this section, we analyze the results we got after running our implementation on the testbed.
+
+Some raw statistics are found in \autoref{tab:comp}.
+Some values related to NullMAC executions are absent.
+The reason is because most of the prints executed on remote sensor nodes did not arrive to the testbed log collection system.
+This problem never occurred using X-MAC, but systematically happened with NullMAC.
+The cause of this problem is unknown.
+
+By looking at \autoref{tab:comp}, we see that NullMAC yields a better global packet delivery rate.
+By extrapolating with data from X-MAC, we can assume that more nodes successfully connected using NullMAC.
+A connected node is a node that printed its parent identifier during the execution.
+
+The packet delivery rate is definitely affected by the parent choice strategy in use.
+By using RSSI, sensor nodes choose a parent that has a better connection quality.
+This leads to less communication problems when sending sensor data to the sink.
+The influence of both configuration options on the average hop-count is insignificant.
+However, the choice of hop-count vs. RSSI has an influence on the physical average length of individual links between nodes.
+With RSSI, the nodes tend to choose parents that are physically closer.
+
+\begin{figure}[htb]
 	\centering
 	\input{distribution.tex}
 	\caption{Distribution of hop-counts with different strategies}
 	\label{fig:distribution}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[tp]
 	\centering
 	% Generate this file by running the logs/parse_logs.py script
 	\input{map.tex}
 	\caption{Parent relations with X-MAC, using the \colorbox{Maroon}{\color{white}hop-count} or \colorbox{JungleGreen}{RSSI} strategies}
-	\label{fig:map-hopcount}
+	\label{fig:map}
 \end{figure}
+
+Looking at the distribution of received messages hop-counts (in \autoref{fig:distribution}) tells us that the majority of nodes in the system were located within 3 hops of the sink.
+The distribution of hop-counts is only slightly affected by configuration.
+
+In \autoref{fig:map}, a 3D representation of the parent relations within nodes is shown.
+Each arrow represents a child-parent relation.
+The sink node is obvious to locate, it is the node with the most children.
+We can see that even remote nodes were able to connect to the system.
+Some paths are quite surprising and really show that radio propagation in a building is hard to predict.
+Nodes that are not connected are sometimes adjacent to connected nodes.
+This means that the disconnected node did not receive any discovery packet while its neighbor did.
+
+\section{Conclusion}
+
+Our implementation of the protocol is functional and adheres to the specification given by the instructors.
+It is able to create a tree structure that nodes can use to send data towards the root node.
+As specified, we implemented multiple variations of the protocol, differing in the MAC layer and in the evaluation strategy.
+
+Our findings show that NullMAC performs better than X-MAC as far as the global delivery rate is concerned.
+This means that the transmission of sensor data is more reliable.
+However, NullMAC is known for being power hungry and unable to cope efficiently with congestion.
+Moreover, when we used NullMAC, important logging messages were lost.
+We were therefore not able to compute certain types of statistics.
+
+In the comparison of the two parent-choice strategies, RSSI offers better reliability due to the choice of more reliable links between nodes.
+We thought that choosing the hop-count strategy would yield overall lower hop-counts, but it is not the case.
+Therefore, RSSI is the best strategy to choose in our setup.
+
+The results presented in this report come from executions on a single topology which is that of the TARWIS testbed of the University of Bern.
+It is important to note that any conclusion drawn in this report only applies to this specific case only.
 
 \printbibliography
 

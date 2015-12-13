@@ -1,29 +1,29 @@
-\begin{algorithm}[htbp]
-\SetKwFunction{Sleep}{Sleep}
-\SetKwFunction{Broadcast}{Broadcast}
-\SetKwData{WaitTime}{WaitTime}
-\SetKwData{SequenceEmitted}{SequenceEmitted}
-\SetKwData{DiscoveryMessage}{DiscoveryMessage}
-\SetKwData{NodeId}{NodeId}
-\KwIn{\\\WaitTime: Time to wait between each discovery phase \\
-\NodeId: ID of the root node}
-\Begin{
-$\SequenceEmitted \leftarrow 0$ \;
-\While{$\mathcal{T}$}{
-\Sleep{\WaitTime} \;
-$\SequenceEmitted \leftarrow \SequenceEmitted + 1$ \;
-$\DiscoveryMessage.ParentId \leftarrow \NodeId$ \;
-$\DiscoveryMessage.HopCount \leftarrow 1$ \;
-$\DiscoveryMessage.SequenceNumber \leftarrow \SequenceEmitted$ \;
-\Broadcast{\DiscoveryMessage} \;
-}}
-\caption{Sink node discovery algorithm}
-\label{algo:root}
-\end{algorithm}
+%\begin{algorithm}[htb]
+%\SetKwFunction{Sleep}{Sleep}
+%\SetKwFunction{Broadcast}{Broadcast}
+%\SetKwData{WaitTime}{WaitTime}
+%\SetKwData{SequenceEmitted}{SequenceEmitted}
+%\SetKwData{DiscoveryMessage}{DiscoveryMessage}
+%\SetKwData{NodeId}{NodeId}
+%\KwIn{\\\WaitTime: Time to wait between each discovery phase \\
+%\NodeId: ID of the root node}
+%\Begin{
+%$\SequenceEmitted \leftarrow 0$ \;
+%\While{$\mathcal{T}$}{
+%\Sleep{\WaitTime} \;
+%$\SequenceEmitted \leftarrow \SequenceEmitted + 1$ \;
+%$\DiscoveryMessage.ParentId \leftarrow \NodeId$ \;
+%$\DiscoveryMessage.HopCount \leftarrow 1$ \;
+%$\DiscoveryMessage.SequenceNumber \leftarrow \SequenceEmitted$ \;
+%\Broadcast{\DiscoveryMessage} \;
+%}}
+%\caption{Sink node discovery algorithm}
+%\label{algo:root}
+%\end{algorithm}
 
 
 
-\begin{algorithm}[htbp]
+\begin{algorithm}[hbt]
 \SetKwFunction{Sleep}{Sleep}
 \SetKwFunction{Broadcast}{Broadcast}
 \SetKwData{WaitTime}{WaitTime}
@@ -56,6 +56,6 @@ $\ShouldForward \leftarrow \mathcal{F}$ \;
 	$\DiscoveryMessage.ParentId \leftarrow \NodeId$ \;
 	\Broadcast{\DiscoveryMessage} \;
 }}
-\caption{Sensor node discovery algorithm}
+\caption{Sensor node discovery algorithm executed by nodes at $\text{level} > 0$ when they receive a broadcast packet}
 \label{algo:nonroot}
 \end{algorithm}
